@@ -613,14 +613,28 @@ class MainWP_CribOps_UI {
                     },
                     nonce: '<?php echo wp_create_nonce('mainwp-cribops-nonce'); ?>'
                 }, function(response) {
-                    if (response.success) {
-                        loadAvailablePlugins();
-                        // Also refresh installed plugins if that tab is visible
-                        if ($('#plugins').hasClass('active')) {
-                            loadInstalledPlugins();
+                    console.log('Install response:', response);
+
+                    // Check for errors in multiple formats
+                    // 1. MainWP error: response.success === false
+                    // 2. Child site error wrapped in success: response.success === true but response.data.error exists
+                    if (!response.success || (response.data && response.data.error)) {
+                        var errorMsg = 'Unknown error';
+                        if (response.data && response.data.error) {
+                            errorMsg = response.data.error;
+                        } else if (response.data && typeof response.data === 'string') {
+                            errorMsg = response.data;
                         }
-                    } else {
-                        alert('Error: ' + (response.data && response.data.error ? response.data.error : 'Unknown error'));
+                        alert('Error: ' + errorMsg);
+                        $button.prop('disabled', false).text('Install');
+                        return;
+                    }
+
+                    // Success - refresh the lists
+                    loadAvailablePlugins();
+                    // Also refresh installed plugins if that tab is visible
+                    if ($('#plugins').hasClass('active')) {
+                        loadInstalledPlugins();
                     }
                     $button.prop('disabled', false).text('Install');
                 });
