@@ -21,9 +21,11 @@ class MainWP_CribOps_UI {
             <h2>Manage CribOps WP Kit - <?php echo esc_html($site->name); ?></h2>
 
             <div class="nav-tab-wrapper">
-                <a href="#plugins" class="nav-tab nav-tab-active" data-tab="plugins">Plugins</a>
-                <a href="#themes" class="nav-tab" data-tab="themes">Themes</a>
-                <a href="#available" class="nav-tab" data-tab="available">Available from CribOps</a>
+                <a href="#plugins" class="nav-tab nav-tab-active" data-tab="plugins">Installed Plugins</a>
+                <a href="#themes" class="nav-tab" data-tab="themes">Installed Themes</a>
+                <a href="#available-plugins" class="nav-tab" data-tab="available-plugins">Available Plugins</a>
+                <a href="#available-themes" class="nav-tab" data-tab="available-themes">Available Themes</a>
+                <a href="#packages" class="nav-tab" data-tab="packages">Packages</a>
                 <a href="#settings" class="nav-tab" data-tab="settings">Settings</a>
                 <a href="#logs" class="nav-tab" data-tab="logs">Activity Logs</a>
             </div>
@@ -64,27 +66,19 @@ class MainWP_CribOps_UI {
                 </div>
             </div>
 
-            <div id="available" class="tab-content">
+            <div id="available-plugins" class="tab-content">
                 <h3>Available Plugins from Site's Repository</h3>
                 <div class="notice notice-info">
                     <p id="repo-info">Loading repository information...</p>
                 </div>
                 <div class="cribops-toolbar">
-                    <button class="button" id="refresh-available">Refresh Available</button>
-                    <select id="plugin-recipe">
-                        <option value="">-- Install Recipe --</option>
-                        <option value="essential">Essential Plugins</option>
-                        <option value="security">Security Suite</option>
-                        <option value="performance">Performance Pack</option>
-                        <option value="ecommerce">E-commerce Bundle</option>
-                    </select>
-                    <button class="button button-primary" id="install-recipe">Install Recipe</button>
+                    <button class="button" id="refresh-available-plugins">Refresh Available</button>
                 </div>
                 <table class="wp-list-table widefat fixed striped">
                     <thead>
                         <tr>
                             <td class="manage-column column-cb check-column">
-                                <input type="checkbox" id="cb-select-all-available">
+                                <input type="checkbox" id="cb-select-all-available-plugins">
                             </td>
                             <th>Plugin</th>
                             <th>Version</th>
@@ -94,6 +88,36 @@ class MainWP_CribOps_UI {
                     </thead>
                     <tbody id="available-plugins-list">
                         <tr><td colspan="5">Loading available plugins from site's repository...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="available-themes" class="tab-content">
+                <h3>Available Themes from Site's Repository</h3>
+                <div class="cribops-toolbar">
+                    <button class="button" id="refresh-available-themes">Refresh Available</button>
+                </div>
+                <div class="theme-browser" id="available-themes-list">
+                    <div class="themes-loading">Loading available themes...</div>
+                </div>
+            </div>
+
+            <div id="packages" class="tab-content">
+                <h3>Prime Mover Packages</h3>
+                <div class="cribops-toolbar">
+                    <button class="button" id="refresh-packages">Refresh Packages</button>
+                </div>
+                <table class="wp-list-table widefat fixed striped">
+                    <thead>
+                        <tr>
+                            <th>Package Name</th>
+                            <th>Description</th>
+                            <th>Size</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="packages-list">
+                        <tr><td colspan="4">Loading packages from site's repository...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -212,10 +236,14 @@ class MainWP_CribOps_UI {
                 // Load data for the tab if needed
                 if (tab === 'plugins' && $('#installed-plugins-list tr').length === 1) {
                     loadInstalledPlugins();
-                } else if (tab === 'themes' && $('.themes-loading').length) {
+                } else if (tab === 'themes' && $('#installed-themes-list .themes-loading').length) {
                     loadInstalledThemes();
-                } else if (tab === 'available' && $('#available-plugins-list tr').length === 1) {
+                } else if (tab === 'available-plugins' && $('#available-plugins-list tr').length === 1) {
                     loadAvailablePlugins();
+                } else if (tab === 'available-themes' && $('#available-themes-list .themes-loading').length) {
+                    loadAvailableThemes();
+                } else if (tab === 'packages' && $('#packages-list tr').length === 1) {
+                    loadPackages();
                 } else if (tab === 'settings') {
                     loadSettings();
                 } else if (tab === 'logs') {
@@ -384,6 +412,83 @@ class MainWP_CribOps_UI {
                 });
 
                 $('#available-plugins-list').html(html || '<tr><td colspan="5">No plugins available</td></tr>');
+            }
+
+            function loadAvailableThemes() {
+                $('#available-themes-list').html('<div class="themes-loading">Loading available themes from site\'s repository...</div>');
+
+                $.post(ajaxurl, {
+                    action: 'mainwp_cribops_run_action',
+                    site_id: siteId,
+                    action_type: 'get_available_themes',
+                    nonce: '<?php echo wp_create_nonce('mainwp-cribops-nonce'); ?>'
+                }, function(response) {
+                    if (response.success && response.data.themes) {
+                        displayAvailableThemes(response.data.themes);
+                    } else {
+                        $('#available-themes-list').html('<p>Error loading available themes. Site may not be configured properly.</p>');
+                    }
+                });
+            }
+
+            function displayAvailableThemes(themes) {
+                var html = '';
+                themes.forEach(function(theme) {
+                    html += '<div class="theme-item' + (theme.installed ? ' installed' : '') + '">';
+                    if (theme.screenshot) {
+                        html += '<img src="' + theme.screenshot + '" class="theme-screenshot">';
+                    }
+                    html += '<h4>' + theme.name + '</h4>';
+                    html += '<p>Version: ' + theme.version + '</p>';
+                    if (theme.author) {
+                        html += '<p>By ' + theme.author + '</p>';
+                    }
+                    if (theme.installed) {
+                        if (theme.active) {
+                            html += '<p><strong style="color: green;">Active Theme</strong></p>';
+                        } else {
+                            html += '<p><strong style="color: orange;">Installed</strong></p>';
+                        }
+                    } else {
+                        html += '<button class="button button-primary theme-install-action" data-theme="' + theme.slug + '">Install Theme</button>';
+                    }
+                    html += '</div>';
+                });
+
+                $('#available-themes-list').html(html || '<p>No themes available</p>');
+            }
+
+            function loadPackages() {
+                $('#packages-list').html('<tr><td colspan="4">Loading packages from site\'s repository...</td></tr>');
+
+                $.post(ajaxurl, {
+                    action: 'mainwp_cribops_run_action',
+                    site_id: siteId,
+                    action_type: 'get_available_packages',
+                    nonce: '<?php echo wp_create_nonce('mainwp-cribops-nonce'); ?>'
+                }, function(response) {
+                    if (response.success && response.data.packages) {
+                        displayPackages(response.data.packages);
+                    } else {
+                        $('#packages-list').html('<tr><td colspan="4">No packages available or error loading packages.</td></tr>');
+                    }
+                });
+            }
+
+            function displayPackages(packages) {
+                var html = '';
+                packages.forEach(function(pkg) {
+                    html += '<tr>';
+                    html += '<td><strong>' + pkg.name + '</strong></td>';
+                    html += '<td>' + (pkg.description || 'No description available') + '</td>';
+                    html += '<td>' + (pkg.size || 'Unknown') + '</td>';
+                    html += '<td>';
+                    html += '<button class="button package-action" data-action="download" data-package="' + pkg.slug + '">Download</button>';
+                    html += '</td>';
+                    html += '</tr>';
+                });
+
+                $('#packages-list').html(html || '<tr><td colspan="4">No packages found</td></tr>');
             }
 
             function loadSettings() {
@@ -574,33 +679,35 @@ class MainWP_CribOps_UI {
             // Refresh button handlers
             $('#refresh-plugins').on('click', loadInstalledPlugins);
             $('#refresh-themes').on('click', loadInstalledThemes);
-            $('#refresh-available').on('click', loadAvailablePlugins);
+            $('#refresh-available-plugins').on('click', loadAvailablePlugins);
+            $('#refresh-available-themes').on('click', loadAvailableThemes);
+            $('#refresh-packages').on('click', loadPackages);
             $('#refresh-logs').on('click', loadActivityLogs);
 
-            // Install recipe handler
-            $('#install-recipe').on('click', function() {
-                var recipe = $('#plugin-recipe').val();
-                if (!recipe) {
-                    alert('Please select a recipe');
-                    return;
-                }
+            // Theme install action handler
+            $(document).on('click', '.theme-install-action', function() {
+                var $button = $(this);
+                var theme = $button.data('theme');
 
-                $(this).prop('disabled', true).text('Installing...');
+                $button.prop('disabled', true).text('Installing...');
 
                 $.post(ajaxurl, {
                     action: 'mainwp_cribops_run_action',
                     site_id: siteId,
-                    action_type: 'install_plugins',
-                    args: { recipe: recipe },
+                    action_type: 'install_theme',
+                    args: { theme_slug: theme },
                     nonce: '<?php echo wp_create_nonce('mainwp-cribops-nonce'); ?>'
                 }, function(response) {
                     if (response.success) {
-                        alert('Recipe installed successfully');
-                        loadAvailablePlugins();
+                        loadAvailableThemes();
+                        // Also refresh installed themes if that tab is visible
+                        if ($('#themes').hasClass('active')) {
+                            loadInstalledThemes();
+                        }
                     } else {
                         alert('Error: ' + (response.data && response.data.error ? response.data.error : 'Unknown error'));
                     }
-                    $('#install-recipe').prop('disabled', false).text('Install Recipe');
+                    $button.prop('disabled', false).text('Install Theme');
                 });
             });
 
@@ -640,7 +747,7 @@ class MainWP_CribOps_UI {
                 $('#installed-plugins-list input[type="checkbox"]').prop('checked', $(this).is(':checked'));
             });
 
-            $('#cb-select-all-available').on('change', function() {
+            $('#cb-select-all-available-plugins').on('change', function() {
                 $('#available-plugins-list input[type="checkbox"]').prop('checked', $(this).is(':checked'));
             });
         });
