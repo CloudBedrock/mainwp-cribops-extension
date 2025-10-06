@@ -3,7 +3,7 @@
  * Plugin Name: MainWP CribOps Extension
  * Plugin URI: https://github.com/CloudBedrock/mainwp-cribops-extension
  * Description: MainWP Extension to control and manage CribOps WP Kit across multiple WordPress sites
- * Version: 1.1.0
+ * Version: 1.1.1
  * Author: CribOps Development Team
  * Author URI: https://cribops.com
  * Text Domain: mainwp-cribops
@@ -20,7 +20,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('MAINWP_CRIBOPS_VERSION', '1.1.0');
+define('MAINWP_CRIBOPS_VERSION', '1.1.1');
 define('MAINWP_CRIBOPS_PLUGIN_FILE', __FILE__);
 define('MAINWP_CRIBOPS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('MAINWP_CRIBOPS_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -39,7 +39,35 @@ add_action('plugins_loaded', 'mainwp_cribops_init_updater');
 
 // Add manual check for updates link
 add_filter('plugin_action_links_' . plugin_basename(__FILE__), function($links) {
-    $check_link = '<a href="' . wp_nonce_url(admin_url('update-core.php?force-check=1'), 'force-check') . '">Check for updates</a>';
+    $check_link = '<a href="#" onclick="jQuery.post(ajaxurl, {action: \'mainwp_cribops_check_update\'}, function(response) { if(response.success && response.data.update) { alert(\'Update available: v\' + response.data.version); window.location.href = \'' . admin_url('plugins.php') . '\'; } else { alert(\'No updates available. Current version: ' . MAINWP_CRIBOPS_VERSION . '\'); } }); return false;">Check for updates</a>';
     array_unshift($links, $check_link);
     return $links;
+});
+
+// Add AJAX handler for checking updates
+add_action('wp_ajax_mainwp_cribops_check_update', function() {
+    // Force transient deletion to check for updates
+    delete_transient('mainwp_cribops_github_release');
+    delete_site_transient('update_plugins');
+
+    // Get the updater instance and check for updates
+    $updater = new MainWP_CribOps_GitHub_Updater(MAINWP_CRIBOPS_PLUGIN_FILE);
+    $github_data = $updater->get_latest_release();
+
+    if ($github_data && version_compare($github_data->tag_name, 'v' . MAINWP_CRIBOPS_VERSION, '>')) {
+        // Force WordPress to check for updates
+        wp_update_plugins();
+
+        wp_send_json_success(array(
+            'update' => true,
+            'version' => str_replace('v', '', $github_data->tag_name),
+            'download_url' => $github_data->zipball_url,
+            'details_url' => $github_data->html_url
+        ));
+    } else {
+        wp_send_json_success(array(
+            'update' => false,
+            'current_version' => MAINWP_CRIBOPS_VERSION
+        ));
+    }
 });

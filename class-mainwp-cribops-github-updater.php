@@ -118,7 +118,7 @@ class MainWP_CribOps_GitHub_Updater {
         return $source;
     }
 
-    private function get_latest_release() {
+    public function get_latest_release() {
         $cache_key = 'mainwp_cribops_github_release';
         $cached = get_transient($cache_key);
 
