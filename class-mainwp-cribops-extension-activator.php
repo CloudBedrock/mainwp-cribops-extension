@@ -8,7 +8,7 @@ class MainWP_CribOps_Extension_Activator {
     protected $childFile;
     protected $plugin_handle = 'mainwp-cribops-extension';
     protected $product_id = 'MainWP CribOps Extension';
-    protected $software_version = '1.0.0';
+    protected $software_version = '1.1.0';
 
     public function __construct() {
         $this->childFile = MAINWP_CRIBOPS_PLUGIN_FILE;
@@ -59,7 +59,11 @@ class MainWP_CribOps_Extension_Activator {
 
         add_action('wp_ajax_mainwp_cribops_get_sites', array($this, 'ajax_get_sites'));
         add_action('wp_ajax_mainwp_cribops_run_action', array($this, 'ajax_run_action'));
+        add_action('wp_ajax_mainwp_cribops_manage_site', array($this, 'ajax_manage_site'));
         add_action('admin_enqueue_scripts', array($this, 'enqueue_scripts'));
+
+        // Add site-specific management pages
+        add_filter('mainwp_getsubpages_sites', array($this, 'add_site_page'), 10, 1);
     }
 
     public function enqueue_scripts() {
@@ -191,8 +195,7 @@ class MainWP_CribOps_Extension_Activator {
                         html += '<td>' + site.cribops_status.version + '</td>';
                         html += '<td>';
                         html += '<button class="button button-small cribops-site-action" data-site-id="' + site.id + '" data-action="sync">Sync</button> ';
-                        html += '<button class="button button-small cribops-site-action" data-site-id="' + site.id + '" data-action="install">Install Plugins</button> ';
-                        html += '<button class="button button-small cribops-site-action" data-site-id="' + site.id + '" data-action="settings">Settings</button>';
+                        html += '<a href="admin.php?page=managesites&id=' + site.id + '&tab=cribops-wp-kit" class="button button-primary button-small">Manage</a>';
                         html += '</td>';
                         html += '</tr>';
                     });
@@ -315,6 +318,60 @@ class MainWP_CribOps_Extension_Activator {
         }
     }
 
+    /**
+     * Add CribOps WP Kit tab to individual site pages
+     */
+    public function add_site_page($subPages) {
+        $subPages[] = array(
+            'title' => 'CribOps WP Kit',
+            'slug' => 'cribops-wp-kit',
+            'callback' => array($this, 'render_site_page'),
+        );
+        return $subPages;
+    }
+
+    /**
+     * Render the CribOps management page for a specific site
+     */
+    public function render_site_page() {
+        if (!isset($_GET['id'])) {
+            echo '<div class="notice notice-error"><p>No site ID provided.</p></div>';
+            return;
+        }
+
+        $site_id = intval($_GET['id']);
+
+        // Load the UI class if not already loaded
+        if (!class_exists('MainWP_CribOps_UI')) {
+            require_once MAINWP_CRIBOPS_PLUGIN_DIR . 'includes/class-mainwp-cribops-ui.php';
+        }
+
+        // Render the site management interface
+        MainWP_CribOps_UI::render_site_management($site_id);
+    }
+
+    /**
+     * AJAX handler for managing a specific site
+     */
+    public function ajax_manage_site() {
+        // Verify nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'mainwp-cribops-nonce')) {
+            wp_send_json_error(array('error' => 'Security check failed'));
+            return;
+        }
+
+        $site_id = isset($_POST['site_id']) ? intval($_POST['site_id']) : 0;
+
+        if (!$site_id) {
+            wp_send_json_error(array('error' => 'No site ID provided'));
+            return;
+        }
+
+        // Return the site management URL
+        $url = admin_url('admin.php?page=managesites&id=' . $site_id . '&tab=cribops-wp-kit');
+        wp_send_json_success(array('url' => $url));
+    }
+
     public function ajax_run_action() {
         // Verify nonce
         if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'mainwp-cribops-nonce')) {
@@ -324,6 +381,7 @@ class MainWP_CribOps_Extension_Activator {
 
         $site_id = isset($_POST['site_id']) ? intval($_POST['site_id']) : 0;
         $action = isset($_POST['action_type']) ? sanitize_text_field($_POST['action_type']) : '';
+        $args = isset($_POST['args']) ? $_POST['args'] : array();
 
         if (!$site_id || !$action) {
             wp_send_json_error(array('error' => 'Missing site_id or action'));
@@ -342,7 +400,8 @@ class MainWP_CribOps_Extension_Activator {
 
                 // Prepare the request
                 $information = array(
-                    'action' => 'cribops_' . $action
+                    'action' => 'cribops_' . $action,
+                    'args' => $args
                 );
 
                 // Call the child site
