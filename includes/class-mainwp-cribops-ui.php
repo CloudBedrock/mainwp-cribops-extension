@@ -322,13 +322,15 @@ class MainWP_CribOps_UI {
                     action_type: 'sync',
                     nonce: '<?php echo wp_create_nonce('mainwp-cribops-nonce'); ?>'
                 }, function(syncResponse) {
-                    if (syncResponse.success && syncResponse.data.cribops_data && syncResponse.data.cribops_data.auth_config) {
-                        var authConfig = syncResponse.data.cribops_data.auth_config;
-                        var repoInfo = 'Repository: ' + authConfig.api_endpoint + ' | Auth: ' + authConfig.auth_type;
-                        if (authConfig.auth_type === 'bearer') {
-                            repoInfo += ' (Token ' + (authConfig.has_bearer_token ? 'configured' : 'not configured') + ')';
+                    if (syncResponse.success && syncResponse.data.cribops_data && syncResponse.data.cribops_data.repository_info) {
+                        var repoInfo = syncResponse.data.cribops_data.repository_info;
+                        var infoText = 'Repository: ' + repoInfo.api_url;
+                        if (repoInfo.using_bearer) {
+                            infoText += ' | Using Bearer Token Authentication';
+                        } else {
+                            infoText += ' | Using Email/Password Authentication';
                         }
-                        $('#repo-info').html(repoInfo);
+                        $('#repo-info').html(infoText);
                     }
 
                     // Now get available plugins from the site's repository
@@ -394,18 +396,16 @@ class MainWP_CribOps_UI {
                     if (response.success && response.data.cribops_data) {
                         var data = response.data.cribops_data;
 
-                        // Display auth configuration
-                        if (data.auth_config) {
-                            $('#site-auth-type').text(data.auth_config.auth_type === 'bearer' ? 'Bearer Token' : 'Email/Password');
-                            $('#site-api-endpoint').text(data.auth_config.api_endpoint);
-                            $('#site-repo-status').html(data.auth_config.repository_configured ?
+                        // Display repository configuration
+                        if (data.repository_info) {
+                            $('#site-auth-type').text(data.repository_info.using_bearer ? 'Bearer Token' : 'Email/Password');
+                            $('#site-api-endpoint').text(data.repository_info.api_url);
+                            $('#site-repo-status').html(data.repository_info.configured ?
                                 '<span style="color: green;">✓ Configured</span>' :
                                 '<span style="color: red;">✗ Not Configured</span>');
 
-                            if (data.auth_config.auth_type === 'bearer') {
-                                $('#site-bearer-status').html(data.auth_config.has_bearer_token ?
-                                    '<span style="color: green;">✓ Token Set</span>' :
-                                    '<span style="color: orange;">⚠ Token Not Set</span>');
+                            if (data.repository_info.using_bearer) {
+                                $('#site-bearer-status').html('<span style="color: green;">✓ Using Bearer Token</span>');
                             } else {
                                 $('#site-bearer-status').text('Not using bearer authentication');
                             }
