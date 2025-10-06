@@ -54,7 +54,7 @@ jobs:
         id: create_release
         uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
         with:
           tag_name: ${{ steps.tag.outputs.TAG }}
           release_name: MainWP CribOps Extension ${{ steps.tag.outputs.TAG }}
@@ -83,7 +83,7 @@ jobs:
       - name: Upload Release Asset (Versioned)
         uses: actions/upload-release-asset@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./mainwp-cribops-extension-${{ steps.tag.outputs.TAG }}.zip
@@ -93,7 +93,7 @@ jobs:
       - name: Upload Release Asset (Latest)
         uses: actions/upload-release-asset@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./mainwp-cribops-extension.zip
