@@ -1,0 +1,103 @@
+/**
+ * MainWP CribOps Extension Admin Styles
+ */
+
+.mainwp-cribops-container {
+    margin-top: 20px;
+}
+
+.mainwp-cribops-container .card {
+    max-width: 100%;
+    margin-bottom: 20px;
+    padding: 20px;
+    background: #fff;
+    border: 1px solid #e5e5e5;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.04);
+}
+
+.mainwp-cribops-container h2 {
+    margin-top: 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.cribops-bulk-actions {
+    padding: 15px 0;
+}
+
+.cribops-bulk-actions button {
+    margin-right: 10px;
+    margin-bottom: 10px;
+}
+
+.cribops-site-action {
+    margin-right: 5px;
+}
+
+#cribops-sites-list td {
+    vertical-align: middle;
+}
+
+.mainwp-cribops-container .wp-list-table {
+    border: 1px solid #e5e5e5;
+}
+
+.mainwp-cribops-container .wp-list-table th {
+    font-weight: 600;
+    background: #f8f8f8;
+}
+
+/* Status indicators */
+.cribops-status-active {
+    color: #46b450;
+    font-weight: 600;
+}
+
+.cribops-status-inactive {
+    color: #dc3232;
+}
+
+.cribops-status-unknown {
+    color: #826eb4;
+}
+
+/* Dialog styles */
+#cribops-plugin-dialog,
+#cribops-license-dialog {
+    padding: 15px;
+}
+
+#cribops-plugin-dialog select,
+#cribops-license-dialog textarea {
+    width: 100%;
+    margin-top: 10px;
+}
+
+/* Loading animation */
+.cribops-loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(0,0,0,.1);
+    border-radius: 50%;
+    border-top-color: #0073aa;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 782px) {
+    .cribops-bulk-actions button {
+        width: 100%;
+        margin-right: 0;
+    }
+
+    .cribops-site-action {
+        display: block;
+        width: 100%;
+        margin-bottom: 5px;
+    }
+}

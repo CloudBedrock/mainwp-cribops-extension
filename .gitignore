@@ -1,0 +1,29 @@
+# IDE and system files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# WordPress specific
+wp-config.php
+.htaccess
+
+# Logs and databases
+*.log
+*.sql
+*.sqlite
+
+# Package manager directories
+node_modules/
+vendor/
+
+# Build files
+dist/
+build/
+
+# Environment files
+.env
+.env.local
