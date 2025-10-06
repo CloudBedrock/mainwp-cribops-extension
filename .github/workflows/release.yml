@@ -1,0 +1,101 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Get tag name
+        id: tag
+        run: echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Create plugin package
+        run: |
+          # Create a directory with the plugin name
+          mkdir mainwp-cribops-extension
+
+          # Copy all plugin files except git-related and development files
+          rsync -av --exclude='.git*' \
+                    --exclude='node_modules' \
+                    --exclude='.DS_Store' \
+                    --exclude='*.log' \
+                    --exclude='tests' \
+                    --exclude='phpunit.xml*' \
+                    --exclude='composer.json' \
+                    --exclude='composer.lock' \
+                    --exclude='package.json' \
+                    --exclude='package-lock.json' \
+                    --exclude='.env*' \
+                    --exclude='.github' \
+                    ./ mainwp-cribops-extension/
+
+          # Create the zip file
+          zip -r mainwp-cribops-extension-${{ steps.tag.outputs.TAG }}.zip mainwp-cribops-extension/
+
+          # Also create a version without the version number for easy download
+          cp mainwp-cribops-extension-${{ steps.tag.outputs.TAG }}.zip mainwp-cribops-extension.zip
+
+      - name: Extract release notes from tag
+        id: release_notes
+        run: |
+          # Get the tag message
+          TAG_MESSAGE=$(git tag -l --format='%(contents)' ${{ steps.tag.outputs.TAG }})
+          echo "RELEASE_NOTES<<EOF" >> $GITHUB_OUTPUT
+          echo "$TAG_MESSAGE" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.tag.outputs.TAG }}
+          release_name: MainWP CribOps Extension ${{ steps.tag.outputs.TAG }}
+          body: |
+            ## MainWP CribOps Extension ${{ steps.tag.outputs.TAG }}
+
+            ${{ steps.release_notes.outputs.RELEASE_NOTES }}
+
+            ### Installation
+            1. Download the `mainwp-cribops-extension.zip` file below
+            2. In your MainWP Dashboard, go to **Plugins → Add New → Upload Plugin**
+            3. Choose the downloaded zip file and click **Install Now**
+            4. Activate the plugin
+
+            ### Requirements
+            - MainWP Dashboard 4.0+
+            - CribOps WP Kit 1.1.6+ on child sites
+            - MainWP Child plugin active on child sites
+
+            ### Assets
+            - **mainwp-cribops-extension.zip** - Ready-to-install plugin package
+            - **Source code** - Repository snapshot
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Asset (Versioned)
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./mainwp-cribops-extension-${{ steps.tag.outputs.TAG }}.zip
+          asset_name: mainwp-cribops-extension-${{ steps.tag.outputs.TAG }}.zip
+          asset_content_type: application/zip
+
+      - name: Upload Release Asset (Latest)
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./mainwp-cribops-extension.zip
+          asset_name: mainwp-cribops-extension.zip
+          asset_content_type: application/zip
