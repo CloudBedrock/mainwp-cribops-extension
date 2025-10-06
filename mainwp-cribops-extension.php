@@ -3,7 +3,7 @@
  * Plugin Name: MainWP CribOps Extension
  * Plugin URI: https://github.com/CloudBedrock/mainwp-cribops-extension
  * Description: MainWP Extension to control and manage CribOps WP Kit across multiple WordPress sites
- * Version: 1.3.1
+ * Version: 1.4.0
  * Author: CribOps Development Team
  * Author URI: https://cribops.com
  * Text Domain: mainwp-cribops
@@ -20,7 +20,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('MAINWP_CRIBOPS_VERSION', '1.3.1');
+define('MAINWP_CRIBOPS_VERSION', '1.4.0');
 define('MAINWP_CRIBOPS_PLUGIN_FILE', __FILE__);
 define('MAINWP_CRIBOPS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('MAINWP_CRIBOPS_PLUGIN_URL', plugin_dir_url(__FILE__));

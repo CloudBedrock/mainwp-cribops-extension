@@ -380,34 +380,42 @@ class MainWP_CribOps_UI {
             function displayAvailablePlugins(plugins) {
                 var html = '';
                 plugins.forEach(function(plugin) {
-                    var status = '';
-                    if (plugin.installed) {
-                        if (plugin.active) {
-                            status = '<span style="color: green;">Active</span>';
-                        } else {
-                            status = '<span style="color: orange;">Installed</span>';
-                        }
-                        if (plugin.update_available) {
-                            status += ' <span style="color: blue;">(Update Available)</span>';
-                        }
+                    var statusText = '';
+                    var statusClass = '';
+                    var actions = '';
+
+                    // Determine status and available actions based on plugin state
+                    if (plugin.status === 'active') {
+                        statusText = '<span class="dashicons dashicons-yes-alt"></span> Active';
+                        statusClass = 'status-active';
+                        actions = '<button class="button plugin-action" data-action="deactivate" data-plugin="' + plugin.slug + '">Deactivate</button>';
+                        actions += ' <button class="button plugin-action" data-action="delete" data-plugin="' + plugin.slug + '">Delete</button>';
+                    } else if (plugin.status === 'inactive') {
+                        statusText = '<span class="dashicons dashicons-minus"></span> Inactive';
+                        statusClass = 'status-inactive';
+                        actions = '<button class="button plugin-action" data-action="activate" data-plugin="' + plugin.slug + '">Activate</button>';
+                        actions += ' <button class="button plugin-action" data-action="delete" data-plugin="' + plugin.slug + '">Delete</button>';
+                    } else if (plugin.status === 'downloaded' || plugin.local) {
+                        statusText = '<span class="dashicons dashicons-download"></span> Downloaded';
+                        statusClass = 'status-downloaded';
+                        actions = '<button class="button button-primary plugin-action" data-action="install" data-plugin="' + plugin.slug + '">Install</button>';
+                        actions += ' <button class="button plugin-action" data-action="redownload" data-plugin="' + plugin.slug + '">Re-download</button>';
                     } else {
-                        status = '<span style="color: gray;">Not Installed</span>';
+                        statusText = '<span class="dashicons dashicons-cloud"></span> Available';
+                        statusClass = 'status-available';
+                        actions = '<button class="button button-primary plugin-action" data-action="download" data-plugin="' + plugin.slug + '">Download</button>';
                     }
 
                     html += '<tr>';
-                    html += '<td><input type="checkbox" name="available[]" value="' + plugin.slug + '"></td>';
-                    html += '<td><strong>' + plugin.name + '</strong><br>' + plugin.slug + '</td>';
-                    html += '<td>' + plugin.version + '</td>';
-                    html += '<td>' + status + '</td>';
-                    html += '<td>';
-
-                    if (!plugin.installed) {
-                        html += '<button class="button button-primary available-action" data-action="install" data-plugin="' + plugin.slug + '">Install</button>';
-                    } else if (plugin.update_available) {
-                        html += '<button class="button available-action" data-action="update" data-plugin="' + plugin.slug + '">Update</button>';
+                    html += '<td><input type="checkbox" name="available[]" value="' + plugin.slug + '" ' + (plugin.status === 'active' ? 'disabled' : '') + '></td>';
+                    html += '<td><strong>' + plugin.name + '</strong><br><span style="color: #666;">' + plugin.slug + '</span>';
+                    if (plugin.description) {
+                        html += '<div style="font-size: 12px; color: #666; margin-top: 4px;">' + plugin.description + '</div>';
                     }
-
                     html += '</td>';
+                    html += '<td>' + (plugin.version || '-') + '</td>';
+                    html += '<td class="' + statusClass + '">' + statusText + '</td>';
+                    html += '<td>' + actions + '</td>';
                     html += '</tr>';
                 });
 
@@ -595,29 +603,48 @@ class MainWP_CribOps_UI {
                 });
             });
 
-            // Available plugin installation
-            $(document).on('click', '.available-action', function() {
+            // Plugin actions (download, install, activate, deactivate, delete, redownload)
+            $(document).on('click', '.plugin-action', function() {
                 var $button = $(this);
                 var action = $button.data('action');
                 var plugin = $button.data('plugin');
+                var originalText = $button.text();
 
-                $button.prop('disabled', true).text('Installing...');
+                // Map action to child site method
+                var actionMap = {
+                    'download': 'download_plugin',
+                    'install': 'install_plugin',
+                    'activate': 'activate_plugin',
+                    'deactivate': 'deactivate_plugin',
+                    'delete': 'delete_plugin',
+                    'redownload': 'download_plugin'
+                };
+
+                var actionType = actionMap[action];
+                if (!actionType) {
+                    alert('Unknown action: ' + action);
+                    return;
+                }
+
+                // Confirm delete action
+                if (action === 'delete' && !confirm('Are you sure you want to delete this plugin?')) {
+                    return;
+                }
+
+                $button.prop('disabled', true).text(action.charAt(0).toUpperCase() + action.slice(1) + 'ing...');
 
                 $.post(ajaxurl, {
                     action: 'mainwp_cribops_run_action',
                     site_id: siteId,
-                    action_type: 'install_single_plugin',
+                    action_type: actionType,
                     args: {
-                        plugin_slug: plugin,
-                        activate: true
+                        plugin_slug: plugin
                     },
                     nonce: '<?php echo wp_create_nonce('mainwp-cribops-nonce'); ?>'
                 }, function(response) {
-                    console.log('Install response:', response);
+                    console.log(action + ' response:', response);
 
-                    // Check for errors in multiple formats
-                    // 1. MainWP error: response.success === false
-                    // 2. Child site error wrapped in success: response.success === true but response.data.error exists
+                    // Check for errors
                     if (!response.success || (response.data && response.data.error)) {
                         var errorMsg = 'Unknown error';
                         if (response.data && response.data.error) {
@@ -626,17 +653,15 @@ class MainWP_CribOps_UI {
                             errorMsg = response.data;
                         }
                         alert('Error: ' + errorMsg);
-                        $button.prop('disabled', false).text('Install');
+                        $button.prop('disabled', false).text(originalText);
                         return;
                     }
 
                     // Success - refresh the lists
                     loadAvailablePlugins();
-                    // Also refresh installed plugins if that tab is visible
                     if ($('#plugins').hasClass('active')) {
                         loadInstalledPlugins();
                     }
-                    $button.prop('disabled', false).text('Install');
                 });
             });
 
