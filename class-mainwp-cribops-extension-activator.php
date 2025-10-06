@@ -8,7 +8,7 @@ class MainWP_CribOps_Extension_Activator {
     protected $childFile;
     protected $plugin_handle = 'mainwp-cribops-extension';
     protected $product_id = 'MainWP CribOps Extension';
-    protected $software_version = '1.1.1';
+    protected $software_version = '1.2.0';
 
     public function __construct() {
         $this->childFile = MAINWP_CRIBOPS_PLUGIN_FILE;
@@ -415,7 +415,13 @@ class MainWP_CribOps_Extension_Activator {
                 if (is_array($result)) {
                     // Check if we have cribops_data in the response
                     if (isset($result['cribops_data'])) {
+                        // Store complete data including auth configuration
                         update_option('mainwp_cribops_site_' . $site_id, $result['cribops_data']);
+
+                        // Store auth config separately for easy access
+                        if (isset($result['cribops_data']['auth_config'])) {
+                            update_option('mainwp_cribops_auth_' . $site_id, $result['cribops_data']['auth_config']);
+                        }
                     }
                     // Also check if the sync action returned data directly
                     else if ($action === 'sync' && isset($result['status'])) {

@@ -65,7 +65,10 @@ class MainWP_CribOps_UI {
             </div>
 
             <div id="available" class="tab-content">
-                <h3>Available Plugins from CribOps Repository</h3>
+                <h3>Available Plugins from Site's Repository</h3>
+                <div class="notice notice-info">
+                    <p id="repo-info">Loading repository information...</p>
+                </div>
                 <div class="cribops-toolbar">
                     <button class="button" id="refresh-available">Refresh Available</button>
                     <select id="plugin-recipe">
@@ -90,42 +93,46 @@ class MainWP_CribOps_UI {
                         </tr>
                     </thead>
                     <tbody id="available-plugins-list">
-                        <tr><td colspan="5">Loading available plugins...</td></tr>
+                        <tr><td colspan="5">Loading available plugins from site's repository...</td></tr>
                     </tbody>
                 </table>
             </div>
 
             <div id="settings" class="tab-content">
-                <h3>CribOps WP Kit Settings</h3>
-                <form id="cribops-settings-form">
-                    <table class="form-table">
-                        <tr>
-                            <th>Authentication Type</th>
-                            <td>
-                                <select name="auth_type" id="auth_type">
-                                    <option value="email">Email/Password</option>
-                                    <option value="bearer">Bearer Token</option>
-                                </select>
-                            </td>
-                        </tr>
-                        <tr class="bearer-token-row" style="display:none;">
-                            <th>Bearer Token</th>
-                            <td>
-                                <input type="text" name="bearer_token" id="bearer_token" class="regular-text">
-                            </td>
-                        </tr>
-                        <tr>
-                            <th>API Endpoint</th>
-                            <td>
-                                <input type="url" name="api_endpoint" id="api_endpoint" class="regular-text"
-                                       value="https://cribops.cloudbedrock.com/api/wp-kit/v1/">
-                            </td>
-                        </tr>
-                    </table>
-                    <p>
-                        <button type="submit" class="button button-primary">Save Settings</button>
-                    </p>
-                </form>
+                <h3>Site's CribOps WP Kit Configuration</h3>
+                <div class="notice notice-info">
+                    <p>These settings are configured on the child site. To change them, update the site's configuration directly.</p>
+                </div>
+                <table class="form-table">
+                    <tr>
+                        <th>Authentication Type</th>
+                        <td>
+                            <span id="site-auth-type" class="description">Loading...</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>API Endpoint</th>
+                        <td>
+                            <span id="site-api-endpoint" class="description">Loading...</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Repository Status</th>
+                        <td>
+                            <span id="site-repo-status" class="description">Loading...</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Bearer Token</th>
+                        <td>
+                            <span id="site-bearer-status" class="description">Loading...</span>
+                        </td>
+                    </tr>
+                </table>
+                <p>
+                    <button type="button" class="button" id="refresh-settings">Refresh Settings</button>
+                    <button type="button" class="button" id="sync-site">Sync with Site</button>
+                </p>
             </div>
 
             <div id="logs" class="tab-content">
@@ -306,19 +313,37 @@ class MainWP_CribOps_UI {
             }
 
             function loadAvailablePlugins() {
-                $('#available-plugins-list').html('<tr><td colspan="5">Loading available plugins...</td></tr>');
+                $('#available-plugins-list').html('<tr><td colspan="5">Loading available plugins from site\'s repository...</td></tr>');
 
+                // First get site's auth config to display
                 $.post(ajaxurl, {
                     action: 'mainwp_cribops_run_action',
                     site_id: siteId,
-                    action_type: 'get_available_plugins',
+                    action_type: 'sync',
                     nonce: '<?php echo wp_create_nonce('mainwp-cribops-nonce'); ?>'
-                }, function(response) {
-                    if (response.success && response.data.plugins) {
-                        displayAvailablePlugins(response.data.plugins);
-                    } else {
-                        $('#available-plugins-list').html('<tr><td colspan="5">Error loading available plugins</td></tr>');
+                }, function(syncResponse) {
+                    if (syncResponse.success && syncResponse.data.cribops_data && syncResponse.data.cribops_data.auth_config) {
+                        var authConfig = syncResponse.data.cribops_data.auth_config;
+                        var repoInfo = 'Repository: ' + authConfig.api_endpoint + ' | Auth: ' + authConfig.auth_type;
+                        if (authConfig.auth_type === 'bearer') {
+                            repoInfo += ' (Token ' + (authConfig.has_bearer_token ? 'configured' : 'not configured') + ')';
+                        }
+                        $('#repo-info').html(repoInfo);
                     }
+
+                    // Now get available plugins from the site's repository
+                    $.post(ajaxurl, {
+                        action: 'mainwp_cribops_run_action',
+                        site_id: siteId,
+                        action_type: 'get_available_plugins',
+                        nonce: '<?php echo wp_create_nonce('mainwp-cribops-nonce'); ?>'
+                    }, function(response) {
+                        if (response.success && response.data.plugins) {
+                            displayAvailablePlugins(response.data.plugins);
+                        } else {
+                            $('#available-plugins-list').html('<tr><td colspan="5">Error loading available plugins. Site may not be configured properly.</td></tr>');
+                        }
+                    });
                 });
             }
 
@@ -363,16 +388,46 @@ class MainWP_CribOps_UI {
                 $.post(ajaxurl, {
                     action: 'mainwp_cribops_run_action',
                     site_id: siteId,
-                    action_type: 'get_settings',
+                    action_type: 'sync',
                     nonce: '<?php echo wp_create_nonce('mainwp-cribops-nonce'); ?>'
                 }, function(response) {
-                    if (response.success && response.data.auth_settings) {
-                        $('#auth_type').val(response.data.auth_settings.auth_type);
-                        $('#api_endpoint').val(response.data.auth_settings.api_endpoint);
+                    if (response.success && response.data.cribops_data) {
+                        var data = response.data.cribops_data;
 
-                        if (response.data.auth_settings.auth_type === 'bearer') {
-                            $('.bearer-token-row').show();
+                        // Display auth configuration
+                        if (data.auth_config) {
+                            $('#site-auth-type').text(data.auth_config.auth_type === 'bearer' ? 'Bearer Token' : 'Email/Password');
+                            $('#site-api-endpoint').text(data.auth_config.api_endpoint);
+                            $('#site-repo-status').html(data.auth_config.repository_configured ?
+                                '<span style="color: green;">✓ Configured</span>' :
+                                '<span style="color: red;">✗ Not Configured</span>');
+
+                            if (data.auth_config.auth_type === 'bearer') {
+                                $('#site-bearer-status').html(data.auth_config.has_bearer_token ?
+                                    '<span style="color: green;">✓ Token Set</span>' :
+                                    '<span style="color: orange;">⚠ Token Not Set</span>');
+                            } else {
+                                $('#site-bearer-status').text('Not using bearer authentication');
+                            }
+                        } else {
+                            $('#site-auth-type').text('Not configured');
+                            $('#site-api-endpoint').text('Not configured');
+                            $('#site-repo-status').html('<span style="color: red;">✗ Not Configured</span>');
+                            $('#site-bearer-status').text('N/A');
                         }
+
+                        // Display auth status
+                        if (data.auth_status) {
+                            var authStatusText = data.auth_status === 'authenticated' ?
+                                '<span style="color: green;">✓ Authenticated</span>' :
+                                '<span style="color: red;">✗ Not Authenticated</span>';
+                            $('#site-repo-status').append(' | ' + authStatusText);
+                        }
+                    } else {
+                        $('#site-auth-type').text('Unable to load');
+                        $('#site-api-endpoint').text('Unable to load');
+                        $('#site-repo-status').text('Unable to load');
+                        $('#site-bearer-status').text('Unable to load');
                     }
                 });
             }
@@ -490,41 +545,30 @@ class MainWP_CribOps_UI {
                 });
             });
 
-            // Settings form submission
-            $('#cribops-settings-form').on('submit', function(e) {
-                e.preventDefault();
+            // Settings refresh button handler
+            $('#refresh-settings').on('click', function() {
+                loadSettings();
+            });
 
-                var settings = {
-                    auth_type: $('#auth_type').val(),
-                    api_endpoint: $('#api_endpoint').val()
-                };
-
-                if (settings.auth_type === 'bearer') {
-                    settings.bearer_token = $('#bearer_token').val();
-                }
+            // Sync site button handler
+            $('#sync-site').on('click', function() {
+                var $button = $(this);
+                $button.prop('disabled', true).text('Syncing...');
 
                 $.post(ajaxurl, {
                     action: 'mainwp_cribops_run_action',
                     site_id: siteId,
-                    action_type: 'update_settings',
-                    args: { settings: settings },
+                    action_type: 'sync',
                     nonce: '<?php echo wp_create_nonce('mainwp-cribops-nonce'); ?>'
                 }, function(response) {
                     if (response.success) {
-                        alert('Settings saved successfully');
+                        loadSettings();
+                        alert('Site synchronized successfully');
                     } else {
-                        alert('Error saving settings');
+                        alert('Error syncing site');
                     }
+                    $button.prop('disabled', false).text('Sync with Site');
                 });
-            });
-
-            // Auth type change handler
-            $('#auth_type').on('change', function() {
-                if ($(this).val() === 'bearer') {
-                    $('.bearer-token-row').show();
-                } else {
-                    $('.bearer-token-row').hide();
-                }
             });
 
             // Refresh button handlers
