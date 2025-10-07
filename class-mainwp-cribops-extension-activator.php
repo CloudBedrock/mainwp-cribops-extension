@@ -8,7 +8,7 @@ class MainWP_CribOps_Extension_Activator {
     protected $childFile;
     protected $plugin_handle = 'mainwp-cribops-extension';
     protected $product_id = 'MainWP CribOps Extension';
-    protected $software_version = '1.4.1';
+    protected $software_version = '1.4.2';
 
     public function __construct() {
         $this->childFile = MAINWP_CRIBOPS_PLUGIN_FILE;

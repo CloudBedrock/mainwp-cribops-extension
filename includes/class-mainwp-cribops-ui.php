@@ -16,6 +16,9 @@ class MainWP_CribOps_UI {
             echo '<div class="notice notice-error"><p>Site not found.</p></div>';
             return;
         }
+
+        // Add MainWP page header
+        do_action('mainwp_pageheader_sites', 'cribops-wp-kit');
         ?>
         <div class="wrap mainwp-cribops-site-management">
             <h2>Manage CribOps WP Kit - <?php echo esc_html($site->name); ?></h2>
@@ -792,6 +795,8 @@ class MainWP_CribOps_UI {
         });
         </script>
         <?php
+        // Add MainWP page footer
+        do_action('mainwp_pagefooter_sites', 'cribops-wp-kit');
     }
 
     /**
