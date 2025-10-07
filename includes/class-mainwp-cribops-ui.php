@@ -670,62 +670,137 @@ class MainWP_CribOps_UI {
 
                 $button.prop('disabled', true).text(action.charAt(0).toUpperCase() + action.slice(1) + 'ing...');
 
-                $.post(ajaxurl, {
-                    action: 'mainwp_cribops_run_action',
-                    site_id: siteId,
-                    action_type: actionType,
-                    args: {
-                        plugin_slug: plugin
-                    },
-                    nonce: '<?php echo wp_create_nonce('mainwp-cribops-nonce'); ?>'
-                }, function(response) {
-                    console.log(action + ' response:', response);
-
-                    // Check for errors
-                    if (!response.success || (response.data && response.data.error)) {
-                        var errorMsg = 'Unknown error';
-                        if (response.data && response.data.error) {
-                            errorMsg = response.data.error;
-                        } else if (response.data && typeof response.data === 'string') {
-                            errorMsg = response.data;
-                        }
-                        alert('Error: ' + errorMsg);
-                        $button.prop('disabled', false).text(originalText);
-                        return;
-                    }
-
-                    // Success - update only this row by fetching fresh data for this specific plugin
-                    $.post(ajaxurl, {
+                $.ajax({
+                    url: ajaxurl,
+                    type: 'POST',
+                    timeout: 120000, // 2 minute timeout for long operations
+                    data: {
                         action: 'mainwp_cribops_run_action',
                         site_id: siteId,
-                        action_type: 'get_available_plugins',
+                        action_type: actionType,
+                        args: {
+                            plugin_slug: plugin
+                        },
                         nonce: '<?php echo wp_create_nonce('mainwp-cribops-nonce'); ?>'
-                    }, function(freshResponse) {
-                        if (freshResponse.success && freshResponse.data.plugins) {
-                            // Find the updated plugin data
-                            var updatedPlugin = freshResponse.data.plugins.find(function(p) {
-                                return p.slug === plugin;
-                            });
+                    },
+                    success: function(response) {
+                        console.log(action + ' response:', response);
 
-                            if (updatedPlugin) {
-                                // Update the stored data
-                                var index = availablePluginsData.findIndex(function(p) {
-                                    return p.slug === plugin;
-                                });
-                                if (index !== -1) {
-                                    availablePluginsData[index] = updatedPlugin;
-                                }
-
-                                // Replace only this row
-                                var newRow = generatePluginRow(updatedPlugin);
-                                $row.replaceWith(newRow);
+                        // Check for errors
+                        if (!response.success || (response.data && response.data.error)) {
+                            var errorMsg = 'Unknown error';
+                            if (response.data && response.data.error) {
+                                errorMsg = response.data.error;
+                            } else if (response.data && typeof response.data === 'string') {
+                                errorMsg = response.data;
                             }
+                            alert('Error: ' + errorMsg);
+                            $button.prop('disabled', false).text(originalText);
+                            return;
                         }
-                    });
 
-                    // Also refresh installed plugins if that tab is visible
-                    if ($('#plugins').hasClass('active')) {
-                        loadInstalledPlugins();
+                        // Success - wait a moment for the operation to complete, then fetch fresh data
+                        $button.text('Refreshing...');
+                        setTimeout(function() {
+                            $.ajax({
+                                url: ajaxurl,
+                                type: 'POST',
+                                timeout: 30000,
+                                data: {
+                                    action: 'mainwp_cribops_run_action',
+                                    site_id: siteId,
+                                    action_type: 'get_available_plugins',
+                                    nonce: '<?php echo wp_create_nonce('mainwp-cribops-nonce'); ?>'
+                                },
+                                success: function(freshResponse) {
+                                    if (freshResponse.success && freshResponse.data.plugins) {
+                                        // Find the updated plugin data
+                                        var updatedPlugin = freshResponse.data.plugins.find(function(p) {
+                                            return p.slug === plugin;
+                                        });
+
+                                        if (updatedPlugin) {
+                                            // Update the stored data
+                                            var index = availablePluginsData.findIndex(function(p) {
+                                                return p.slug === plugin;
+                                            });
+                                            if (index !== -1) {
+                                                availablePluginsData[index] = updatedPlugin;
+                                            }
+
+                                            // Replace only this row
+                                            var newRow = generatePluginRow(updatedPlugin);
+                                            $row.replaceWith(newRow);
+                                        }
+                                    }
+
+                                    // Also refresh installed plugins if that tab is visible
+                                    if ($('#plugins').hasClass('active')) {
+                                        loadInstalledPlugins();
+                                    }
+                                },
+                                error: function() {
+                                    // If refresh fails, just reload the whole list
+                                    loadAvailablePlugins();
+                                    if ($('#plugins').hasClass('active')) {
+                                        loadInstalledPlugins();
+                                    }
+                                }
+                            });
+                        }, 1500); // Wait 1.5 seconds for operation to fully complete on server
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        console.error('AJAX Error:', textStatus, errorThrown);
+
+                        if (textStatus === 'timeout') {
+                            // Operation timed out - show message and refresh to get actual status
+                            $button.text('Checking status...');
+                            alert('Operation is taking longer than expected. Checking current status...');
+
+                            setTimeout(function() {
+                                $.ajax({
+                                    url: ajaxurl,
+                                    type: 'POST',
+                                    timeout: 30000,
+                                    data: {
+                                        action: 'mainwp_cribops_run_action',
+                                        site_id: siteId,
+                                        action_type: 'get_available_plugins',
+                                        nonce: '<?php echo wp_create_nonce('mainwp-cribops-nonce'); ?>'
+                                    },
+                                    success: function(freshResponse) {
+                                        if (freshResponse.success && freshResponse.data.plugins) {
+                                            var updatedPlugin = freshResponse.data.plugins.find(function(p) {
+                                                return p.slug === plugin;
+                                            });
+
+                                            if (updatedPlugin) {
+                                                var index = availablePluginsData.findIndex(function(p) {
+                                                    return p.slug === plugin;
+                                                });
+                                                if (index !== -1) {
+                                                    availablePluginsData[index] = updatedPlugin;
+                                                }
+
+                                                var newRow = generatePluginRow(updatedPlugin);
+                                                $row.replaceWith(newRow);
+                                            }
+                                        }
+
+                                        if ($('#plugins').hasClass('active')) {
+                                            loadInstalledPlugins();
+                                        }
+                                    },
+                                    error: function() {
+                                        alert('Unable to verify status. Please refresh the page to see current state.');
+                                        $button.prop('disabled', false).text(originalText);
+                                    }
+                                });
+                            }, 2000);
+                        } else {
+                            alert('Communication error: ' + textStatus);
+                            $button.prop('disabled', false).text(originalText);
+                        }
                     }
                 });
             });
@@ -796,50 +871,121 @@ class MainWP_CribOps_UI {
 
                 $button.prop('disabled', true).text('Installing...');
 
-                $.post(ajaxurl, {
-                    action: 'mainwp_cribops_run_action',
-                    site_id: siteId,
-                    action_type: 'install_theme',
-                    args: { theme_slug: theme },
-                    nonce: '<?php echo wp_create_nonce('mainwp-cribops-nonce'); ?>'
-                }, function(response) {
-                    if (response.success) {
-                        // Update only this theme item by fetching fresh data
-                        $.post(ajaxurl, {
-                            action: 'mainwp_cribops_run_action',
-                            site_id: siteId,
-                            action_type: 'get_available_themes',
-                            nonce: '<?php echo wp_create_nonce('mainwp-cribops-nonce'); ?>'
-                        }, function(freshResponse) {
-                            if (freshResponse.success && freshResponse.data.themes) {
-                                // Find the updated theme data
-                                var updatedTheme = freshResponse.data.themes.find(function(t) {
-                                    return t.slug === theme;
-                                });
+                $.ajax({
+                    url: ajaxurl,
+                    type: 'POST',
+                    timeout: 120000, // 2 minute timeout
+                    data: {
+                        action: 'mainwp_cribops_run_action',
+                        site_id: siteId,
+                        action_type: 'install_theme',
+                        args: { theme_slug: theme },
+                        nonce: '<?php echo wp_create_nonce('mainwp-cribops-nonce'); ?>'
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            // Update only this theme item by fetching fresh data
+                            $button.text('Refreshing...');
+                            setTimeout(function() {
+                                $.ajax({
+                                    url: ajaxurl,
+                                    type: 'POST',
+                                    timeout: 30000,
+                                    data: {
+                                        action: 'mainwp_cribops_run_action',
+                                        site_id: siteId,
+                                        action_type: 'get_available_themes',
+                                        nonce: '<?php echo wp_create_nonce('mainwp-cribops-nonce'); ?>'
+                                    },
+                                    success: function(freshResponse) {
+                                        if (freshResponse.success && freshResponse.data.themes) {
+                                            // Find the updated theme data
+                                            var updatedTheme = freshResponse.data.themes.find(function(t) {
+                                                return t.slug === theme;
+                                            });
 
-                                if (updatedTheme) {
-                                    // Update the stored data
-                                    var index = availableThemesData.findIndex(function(t) {
-                                        return t.slug === theme;
-                                    });
-                                    if (index !== -1) {
-                                        availableThemesData[index] = updatedTheme;
+                                            if (updatedTheme) {
+                                                // Update the stored data
+                                                var index = availableThemesData.findIndex(function(t) {
+                                                    return t.slug === theme;
+                                                });
+                                                if (index !== -1) {
+                                                    availableThemesData[index] = updatedTheme;
+                                                }
+
+                                                // Replace only this theme item
+                                                var newThemeItem = generateThemeItem(updatedTheme);
+                                                $themeItem.replaceWith(newThemeItem);
+                                            }
+                                        }
+
+                                        // Also refresh installed themes if that tab is visible
+                                        if ($('#themes').hasClass('active')) {
+                                            loadInstalledThemes();
+                                        }
+                                    },
+                                    error: function() {
+                                        loadAvailableThemes();
+                                        if ($('#themes').hasClass('active')) {
+                                            loadInstalledThemes();
+                                        }
                                     }
-
-                                    // Replace only this theme item
-                                    var newThemeItem = generateThemeItem(updatedTheme);
-                                    $themeItem.replaceWith(newThemeItem);
-                                }
-                            }
-                        });
-
-                        // Also refresh installed themes if that tab is visible
-                        if ($('#themes').hasClass('active')) {
-                            loadInstalledThemes();
+                                });
+                            }, 1500);
+                        } else {
+                            alert('Error: ' + (response.data && response.data.error ? response.data.error : 'Unknown error'));
+                            $button.prop('disabled', false).text('Install Theme');
                         }
-                    } else {
-                        alert('Error: ' + (response.data && response.data.error ? response.data.error : 'Unknown error'));
-                        $button.prop('disabled', false).text('Install Theme');
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        if (textStatus === 'timeout') {
+                            $button.text('Checking status...');
+                            alert('Installation is taking longer than expected. Checking current status...');
+
+                            setTimeout(function() {
+                                $.ajax({
+                                    url: ajaxurl,
+                                    type: 'POST',
+                                    timeout: 30000,
+                                    data: {
+                                        action: 'mainwp_cribops_run_action',
+                                        site_id: siteId,
+                                        action_type: 'get_available_themes',
+                                        nonce: '<?php echo wp_create_nonce('mainwp-cribops-nonce'); ?>'
+                                    },
+                                    success: function(freshResponse) {
+                                        if (freshResponse.success && freshResponse.data.themes) {
+                                            var updatedTheme = freshResponse.data.themes.find(function(t) {
+                                                return t.slug === theme;
+                                            });
+
+                                            if (updatedTheme) {
+                                                var index = availableThemesData.findIndex(function(t) {
+                                                    return t.slug === theme;
+                                                });
+                                                if (index !== -1) {
+                                                    availableThemesData[index] = updatedTheme;
+                                                }
+
+                                                var newThemeItem = generateThemeItem(updatedTheme);
+                                                $themeItem.replaceWith(newThemeItem);
+                                            }
+                                        }
+
+                                        if ($('#themes').hasClass('active')) {
+                                            loadInstalledThemes();
+                                        }
+                                    },
+                                    error: function() {
+                                        alert('Unable to verify status. Please refresh the page to see current state.');
+                                        $button.prop('disabled', false).text('Install Theme');
+                                    }
+                                });
+                            }, 2000);
+                        } else {
+                            alert('Communication error: ' + textStatus);
+                            $button.prop('disabled', false).text('Install Theme');
+                        }
                     }
                 });
             });
