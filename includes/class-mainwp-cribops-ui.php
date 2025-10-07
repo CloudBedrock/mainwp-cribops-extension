@@ -75,6 +75,7 @@ class MainWP_CribOps_UI {
                     <p id="repo-info">Loading repository information...</p>
                 </div>
                 <div class="cribops-toolbar">
+                    <input type="text" id="search-available-plugins" class="regular-text" placeholder="Search plugins by name...">
                     <button class="button" id="refresh-available-plugins">Refresh Available</button>
                 </div>
                 <table class="wp-list-table widefat fixed striped">
@@ -98,6 +99,7 @@ class MainWP_CribOps_UI {
             <div id="available-themes" class="tab-content">
                 <h3>Available Themes from Site's Repository</h3>
                 <div class="cribops-toolbar">
+                    <input type="text" id="search-available-themes" class="regular-text" placeholder="Search themes by name...">
                     <button class="button" id="refresh-available-themes">Refresh Available</button>
                 </div>
                 <div class="theme-browser" id="available-themes-list">
@@ -108,6 +110,7 @@ class MainWP_CribOps_UI {
             <div id="packages" class="tab-content">
                 <h3>Prime Mover Packages</h3>
                 <div class="cribops-toolbar">
+                    <input type="text" id="search-packages" class="regular-text" placeholder="Search packages by name...">
                     <button class="button" id="refresh-packages">Refresh Packages</button>
                 </div>
                 <table class="wp-list-table widefat fixed striped">
@@ -184,6 +187,12 @@ class MainWP_CribOps_UI {
             }
             .cribops-toolbar {
                 margin-bottom: 15px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+            .cribops-toolbar input[type="text"] {
+                min-width: 300px;
             }
             .cribops-toolbar button,
             .cribops-toolbar select {
@@ -224,6 +233,11 @@ class MainWP_CribOps_UI {
         <script>
         jQuery(document).ready(function($) {
             var siteId = <?php echo intval($site_id); ?>;
+
+            // Store data globally for filtering
+            var availablePluginsData = [];
+            var availableThemesData = [];
+            var packagesData = [];
 
             // Tab switching
             $('.nav-tab').on('click', function(e) {
@@ -380,46 +394,53 @@ class MainWP_CribOps_UI {
                 });
             }
 
+            function generatePluginRow(plugin) {
+                var statusText = '';
+                var statusClass = '';
+                var actions = '';
+
+                // Determine status and available actions based on plugin state
+                if (plugin.status === 'active') {
+                    statusText = '<span class="dashicons dashicons-yes-alt"></span> Active';
+                    statusClass = 'status-active';
+                    actions = '<button class="button plugin-action" data-action="deactivate" data-plugin="' + plugin.slug + '">Deactivate</button>';
+                    actions += ' <button class="button plugin-action" data-action="delete" data-plugin="' + plugin.slug + '">Delete</button>';
+                } else if (plugin.status === 'inactive') {
+                    statusText = '<span class="dashicons dashicons-minus"></span> Inactive';
+                    statusClass = 'status-inactive';
+                    actions = '<button class="button plugin-action" data-action="activate" data-plugin="' + plugin.slug + '">Activate</button>';
+                    actions += ' <button class="button plugin-action" data-action="delete" data-plugin="' + plugin.slug + '">Delete</button>';
+                } else if (plugin.status === 'downloaded' || plugin.local) {
+                    statusText = '<span class="dashicons dashicons-download"></span> Downloaded';
+                    statusClass = 'status-downloaded';
+                    actions = '<button class="button button-primary plugin-action" data-action="install" data-plugin="' + plugin.slug + '">Install</button>';
+                    actions += ' <button class="button plugin-action" data-action="redownload" data-plugin="' + plugin.slug + '">Re-download</button>';
+                } else {
+                    statusText = '<span class="dashicons dashicons-cloud"></span> Available';
+                    statusClass = 'status-available';
+                    actions = '<button class="button button-primary plugin-action" data-action="download" data-plugin="' + plugin.slug + '">Download</button>';
+                }
+
+                var html = '<tr data-plugin-slug="' + plugin.slug + '" data-plugin-name="' + plugin.name.toLowerCase() + '">';
+                html += '<td><input type="checkbox" name="available[]" value="' + plugin.slug + '" ' + (plugin.status === 'active' ? 'disabled' : '') + '></td>';
+                html += '<td><strong>' + plugin.name + '</strong><br><span style="color: #666;">' + plugin.slug + '</span>';
+                if (plugin.description) {
+                    html += '<div style="font-size: 12px; color: #666; margin-top: 4px;">' + plugin.description + '</div>';
+                }
+                html += '</td>';
+                html += '<td>' + (plugin.version || '-') + '</td>';
+                html += '<td class="' + statusClass + '">' + statusText + '</td>';
+                html += '<td>' + actions + '</td>';
+                html += '</tr>';
+
+                return html;
+            }
+
             function displayAvailablePlugins(plugins) {
+                availablePluginsData = plugins;
                 var html = '';
                 plugins.forEach(function(plugin) {
-                    var statusText = '';
-                    var statusClass = '';
-                    var actions = '';
-
-                    // Determine status and available actions based on plugin state
-                    if (plugin.status === 'active') {
-                        statusText = '<span class="dashicons dashicons-yes-alt"></span> Active';
-                        statusClass = 'status-active';
-                        actions = '<button class="button plugin-action" data-action="deactivate" data-plugin="' + plugin.slug + '">Deactivate</button>';
-                        actions += ' <button class="button plugin-action" data-action="delete" data-plugin="' + plugin.slug + '">Delete</button>';
-                    } else if (plugin.status === 'inactive') {
-                        statusText = '<span class="dashicons dashicons-minus"></span> Inactive';
-                        statusClass = 'status-inactive';
-                        actions = '<button class="button plugin-action" data-action="activate" data-plugin="' + plugin.slug + '">Activate</button>';
-                        actions += ' <button class="button plugin-action" data-action="delete" data-plugin="' + plugin.slug + '">Delete</button>';
-                    } else if (plugin.status === 'downloaded' || plugin.local) {
-                        statusText = '<span class="dashicons dashicons-download"></span> Downloaded';
-                        statusClass = 'status-downloaded';
-                        actions = '<button class="button button-primary plugin-action" data-action="install" data-plugin="' + plugin.slug + '">Install</button>';
-                        actions += ' <button class="button plugin-action" data-action="redownload" data-plugin="' + plugin.slug + '">Re-download</button>';
-                    } else {
-                        statusText = '<span class="dashicons dashicons-cloud"></span> Available';
-                        statusClass = 'status-available';
-                        actions = '<button class="button button-primary plugin-action" data-action="download" data-plugin="' + plugin.slug + '">Download</button>';
-                    }
-
-                    html += '<tr>';
-                    html += '<td><input type="checkbox" name="available[]" value="' + plugin.slug + '" ' + (plugin.status === 'active' ? 'disabled' : '') + '></td>';
-                    html += '<td><strong>' + plugin.name + '</strong><br><span style="color: #666;">' + plugin.slug + '</span>';
-                    if (plugin.description) {
-                        html += '<div style="font-size: 12px; color: #666; margin-top: 4px;">' + plugin.description + '</div>';
-                    }
-                    html += '</td>';
-                    html += '<td>' + (plugin.version || '-') + '</td>';
-                    html += '<td class="' + statusClass + '">' + statusText + '</td>';
-                    html += '<td>' + actions + '</td>';
-                    html += '</tr>';
+                    html += generatePluginRow(plugin);
                 });
 
                 $('#available-plugins-list').html(html || '<tr><td colspan="5">No plugins available</td></tr>');
@@ -442,28 +463,34 @@ class MainWP_CribOps_UI {
                 });
             }
 
+            function generateThemeItem(theme) {
+                var html = '<div class="theme-item' + (theme.installed ? ' installed' : '') + '" data-theme-slug="' + theme.slug + '" data-theme-name="' + theme.name.toLowerCase() + '">';
+                if (theme.screenshot) {
+                    html += '<img src="' + theme.screenshot + '" class="theme-screenshot">';
+                }
+                html += '<h4>' + theme.name + '</h4>';
+                html += '<p>Version: ' + theme.version + '</p>';
+                if (theme.author) {
+                    html += '<p>By ' + theme.author + '</p>';
+                }
+                if (theme.installed) {
+                    if (theme.active) {
+                        html += '<p><strong style="color: green;">Active Theme</strong></p>';
+                    } else {
+                        html += '<p><strong style="color: orange;">Installed</strong></p>';
+                    }
+                } else {
+                    html += '<button class="button button-primary theme-install-action" data-theme="' + theme.slug + '">Install Theme</button>';
+                }
+                html += '</div>';
+                return html;
+            }
+
             function displayAvailableThemes(themes) {
+                availableThemesData = themes;
                 var html = '';
                 themes.forEach(function(theme) {
-                    html += '<div class="theme-item' + (theme.installed ? ' installed' : '') + '">';
-                    if (theme.screenshot) {
-                        html += '<img src="' + theme.screenshot + '" class="theme-screenshot">';
-                    }
-                    html += '<h4>' + theme.name + '</h4>';
-                    html += '<p>Version: ' + theme.version + '</p>';
-                    if (theme.author) {
-                        html += '<p>By ' + theme.author + '</p>';
-                    }
-                    if (theme.installed) {
-                        if (theme.active) {
-                            html += '<p><strong style="color: green;">Active Theme</strong></p>';
-                        } else {
-                            html += '<p><strong style="color: orange;">Installed</strong></p>';
-                        }
-                    } else {
-                        html += '<button class="button button-primary theme-install-action" data-theme="' + theme.slug + '">Install Theme</button>';
-                    }
-                    html += '</div>';
+                    html += generateThemeItem(theme);
                 });
 
                 $('#available-themes-list').html(html || '<p>No themes available</p>');
@@ -486,17 +513,23 @@ class MainWP_CribOps_UI {
                 });
             }
 
+            function generatePackageRow(pkg) {
+                var html = '<tr data-package-slug="' + pkg.slug + '" data-package-name="' + pkg.name.toLowerCase() + '">';
+                html += '<td><strong>' + pkg.name + '</strong></td>';
+                html += '<td>' + (pkg.description || 'No description available') + '</td>';
+                html += '<td>' + (pkg.size || 'Unknown') + '</td>';
+                html += '<td>';
+                html += '<button class="button package-action" data-action="download" data-package="' + pkg.slug + '">Download</button>';
+                html += '</td>';
+                html += '</tr>';
+                return html;
+            }
+
             function displayPackages(packages) {
+                packagesData = packages;
                 var html = '';
                 packages.forEach(function(pkg) {
-                    html += '<tr>';
-                    html += '<td><strong>' + pkg.name + '</strong></td>';
-                    html += '<td>' + (pkg.description || 'No description available') + '</td>';
-                    html += '<td>' + (pkg.size || 'Unknown') + '</td>';
-                    html += '<td>';
-                    html += '<button class="button package-action" data-action="download" data-package="' + pkg.slug + '">Download</button>';
-                    html += '</td>';
-                    html += '</tr>';
+                    html += generatePackageRow(pkg);
                 });
 
                 $('#packages-list').html(html || '<tr><td colspan="4">No packages found</td></tr>');
@@ -612,6 +645,7 @@ class MainWP_CribOps_UI {
                 var action = $button.data('action');
                 var plugin = $button.data('plugin');
                 var originalText = $button.text();
+                var $row = $button.closest('tr');
 
                 // Map action to child site method
                 var actionMap = {
@@ -660,8 +694,36 @@ class MainWP_CribOps_UI {
                         return;
                     }
 
-                    // Success - refresh the lists
-                    loadAvailablePlugins();
+                    // Success - update only this row by fetching fresh data for this specific plugin
+                    $.post(ajaxurl, {
+                        action: 'mainwp_cribops_run_action',
+                        site_id: siteId,
+                        action_type: 'get_available_plugins',
+                        nonce: '<?php echo wp_create_nonce('mainwp-cribops-nonce'); ?>'
+                    }, function(freshResponse) {
+                        if (freshResponse.success && freshResponse.data.plugins) {
+                            // Find the updated plugin data
+                            var updatedPlugin = freshResponse.data.plugins.find(function(p) {
+                                return p.slug === plugin;
+                            });
+
+                            if (updatedPlugin) {
+                                // Update the stored data
+                                var index = availablePluginsData.findIndex(function(p) {
+                                    return p.slug === plugin;
+                                });
+                                if (index !== -1) {
+                                    availablePluginsData[index] = updatedPlugin;
+                                }
+
+                                // Replace only this row
+                                var newRow = generatePluginRow(updatedPlugin);
+                                $row.replaceWith(newRow);
+                            }
+                        }
+                    });
+
+                    // Also refresh installed plugins if that tab is visible
                     if ($('#plugins').hasClass('active')) {
                         loadInstalledPlugins();
                     }
@@ -730,6 +792,7 @@ class MainWP_CribOps_UI {
             $(document).on('click', '.theme-install-action', function() {
                 var $button = $(this);
                 var theme = $button.data('theme');
+                var $themeItem = $button.closest('.theme-item');
 
                 $button.prop('disabled', true).text('Installing...');
 
@@ -741,15 +804,43 @@ class MainWP_CribOps_UI {
                     nonce: '<?php echo wp_create_nonce('mainwp-cribops-nonce'); ?>'
                 }, function(response) {
                     if (response.success) {
-                        loadAvailableThemes();
+                        // Update only this theme item by fetching fresh data
+                        $.post(ajaxurl, {
+                            action: 'mainwp_cribops_run_action',
+                            site_id: siteId,
+                            action_type: 'get_available_themes',
+                            nonce: '<?php echo wp_create_nonce('mainwp-cribops-nonce'); ?>'
+                        }, function(freshResponse) {
+                            if (freshResponse.success && freshResponse.data.themes) {
+                                // Find the updated theme data
+                                var updatedTheme = freshResponse.data.themes.find(function(t) {
+                                    return t.slug === theme;
+                                });
+
+                                if (updatedTheme) {
+                                    // Update the stored data
+                                    var index = availableThemesData.findIndex(function(t) {
+                                        return t.slug === theme;
+                                    });
+                                    if (index !== -1) {
+                                        availableThemesData[index] = updatedTheme;
+                                    }
+
+                                    // Replace only this theme item
+                                    var newThemeItem = generateThemeItem(updatedTheme);
+                                    $themeItem.replaceWith(newThemeItem);
+                                }
+                            }
+                        });
+
                         // Also refresh installed themes if that tab is visible
                         if ($('#themes').hasClass('active')) {
                             loadInstalledThemes();
                         }
                     } else {
                         alert('Error: ' + (response.data && response.data.error ? response.data.error : 'Unknown error'));
+                        $button.prop('disabled', false).text('Install Theme');
                     }
-                    $button.prop('disabled', false).text('Install Theme');
                 });
             });
 
@@ -791,6 +882,107 @@ class MainWP_CribOps_UI {
 
             $('#cb-select-all-available-plugins').on('change', function() {
                 $('#available-plugins-list input[type="checkbox"]').prop('checked', $(this).is(':checked'));
+            });
+
+            // Package action handler
+            $(document).on('click', '.package-action', function() {
+                var $button = $(this);
+                var action = $button.data('action');
+                var packageSlug = $button.data('package');
+                var $row = $button.closest('tr');
+
+                $button.prop('disabled', true).text('Downloading...');
+
+                $.post(ajaxurl, {
+                    action: 'mainwp_cribops_run_action',
+                    site_id: siteId,
+                    action_type: 'download_package',
+                    args: { package_slug: packageSlug },
+                    nonce: '<?php echo wp_create_nonce('mainwp-cribops-nonce'); ?>'
+                }, function(response) {
+                    if (response.success) {
+                        // Update only this row by fetching fresh data
+                        $.post(ajaxurl, {
+                            action: 'mainwp_cribops_run_action',
+                            site_id: siteId,
+                            action_type: 'get_available_packages',
+                            nonce: '<?php echo wp_create_nonce('mainwp-cribops-nonce'); ?>'
+                        }, function(freshResponse) {
+                            if (freshResponse.success && freshResponse.data.packages) {
+                                // Find the updated package data
+                                var updatedPackage = freshResponse.data.packages.find(function(p) {
+                                    return p.slug === packageSlug;
+                                });
+
+                                if (updatedPackage) {
+                                    // Update the stored data
+                                    var index = packagesData.findIndex(function(p) {
+                                        return p.slug === packageSlug;
+                                    });
+                                    if (index !== -1) {
+                                        packagesData[index] = updatedPackage;
+                                    }
+
+                                    // Replace only this row
+                                    var newRow = generatePackageRow(updatedPackage);
+                                    $row.replaceWith(newRow);
+                                }
+                            }
+                        });
+                        alert('Package downloaded successfully');
+                    } else {
+                        alert('Error: ' + (response.data && response.data.error ? response.data.error : 'Unknown error'));
+                        $button.prop('disabled', false).text('Download');
+                    }
+                });
+            });
+
+            // Search functionality for available plugins
+            $('#search-available-plugins').on('keyup', function() {
+                var searchTerm = $(this).val().toLowerCase();
+                $('#available-plugins-list tr').each(function() {
+                    var $row = $(this);
+                    var pluginName = $row.data('plugin-name');
+                    if (pluginName) {
+                        if (pluginName.indexOf(searchTerm) > -1) {
+                            $row.show();
+                        } else {
+                            $row.hide();
+                        }
+                    }
+                });
+            });
+
+            // Search functionality for available themes
+            $('#search-available-themes').on('keyup', function() {
+                var searchTerm = $(this).val().toLowerCase();
+                $('#available-themes-list .theme-item').each(function() {
+                    var $item = $(this);
+                    var themeName = $item.data('theme-name');
+                    if (themeName) {
+                        if (themeName.indexOf(searchTerm) > -1) {
+                            $item.show();
+                        } else {
+                            $item.hide();
+                        }
+                    }
+                });
+            });
+
+            // Search functionality for packages
+            $('#search-packages').on('keyup', function() {
+                var searchTerm = $(this).val().toLowerCase();
+                $('#packages-list tr').each(function() {
+                    var $row = $(this);
+                    var packageName = $row.data('package-name');
+                    if (packageName) {
+                        if (packageName.indexOf(searchTerm) > -1) {
+                            $row.show();
+                        } else {
+                            $row.hide();
+                        }
+                    }
+                });
             });
         });
         </script>
