@@ -178,37 +178,54 @@ class MainWP_CribOps_UI {
         </div>
 
         <style>
-            /* Navigation Buttons - WP Rocket Style */
+            /* Navigation Buttons - MainWP Style */
             .cribops-nav-wrapper {
                 display: flex;
                 flex-wrap: wrap;
                 gap: 8px;
                 margin: 20px 0 30px;
-                padding: 0;
+                padding: 4px;
+                background: #f0f0f1;
+                border-radius: 6px;
             }
             .cribops-nav-btn {
-                background: #2c3338;
-                color: #fff;
-                border: none;
-                padding: 10px 20px;
-                font-size: 14px;
+                background: transparent;
+                color: #2c3338;
+                border: 1px solid transparent;
+                padding: 10px 18px;
+                font-size: 13px;
                 font-weight: 500;
                 cursor: pointer;
                 border-radius: 4px;
-                transition: all 0.2s ease;
+                transition: all 0.15s ease;
                 outline: none;
+                position: relative;
             }
             .cribops-nav-btn:hover {
-                background: #1d2327;
-                transform: translateY(-1px);
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                background: #fff;
+                border-color: #7fb100;
+                color: #2c3338;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.05);
             }
             .cribops-nav-btn.cribops-nav-active {
-                background: #0073aa;
-                box-shadow: 0 2px 6px rgba(0,115,170,0.3);
+                background: #fff;
+                color: #2c3338;
+                border-color: #7fb100;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            }
+            .cribops-nav-btn.cribops-nav-active::before {
+                content: '';
+                position: absolute;
+                bottom: -4px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 80%;
+                height: 3px;
+                background: #7fb100;
+                border-radius: 2px 2px 0 0;
             }
             .cribops-nav-btn.cribops-nav-active:hover {
-                background: #005a87;
+                border-color: #6a9600;
             }
 
             /* Tab Content */
