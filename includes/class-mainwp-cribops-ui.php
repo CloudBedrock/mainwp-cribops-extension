@@ -23,14 +23,14 @@ class MainWP_CribOps_UI {
         <div class="wrap mainwp-cribops-site-management">
             <h2>Manage CribOps WP Kit - <?php echo esc_html($site->name); ?></h2>
 
-            <div class="nav-tab-wrapper">
-                <a href="#plugins" class="nav-tab nav-tab-active" data-tab="plugins">Installed Plugins</a>
-                <a href="#themes" class="nav-tab" data-tab="themes">Installed Themes</a>
-                <a href="#available-plugins" class="nav-tab" data-tab="available-plugins">Available Plugins</a>
-                <a href="#available-themes" class="nav-tab" data-tab="available-themes">Available Themes</a>
-                <a href="#packages" class="nav-tab" data-tab="packages">Packages</a>
-                <a href="#settings" class="nav-tab" data-tab="settings">Settings</a>
-                <a href="#logs" class="nav-tab" data-tab="logs">Activity Logs</a>
+            <div class="cribops-nav-wrapper">
+                <button class="cribops-nav-btn cribops-nav-active" data-tab="plugins">Installed Plugins</button>
+                <button class="cribops-nav-btn" data-tab="themes">Installed Themes</button>
+                <button class="cribops-nav-btn" data-tab="available-plugins">Available Plugins</button>
+                <button class="cribops-nav-btn" data-tab="available-themes">Available Themes</button>
+                <button class="cribops-nav-btn" data-tab="packages">Packages</button>
+                <button class="cribops-nav-btn" data-tab="settings">Settings</button>
+                <button class="cribops-nav-btn" data-tab="logs">Activity Logs</button>
             </div>
 
             <div id="plugins" class="tab-content active">
@@ -178,6 +178,40 @@ class MainWP_CribOps_UI {
         </div>
 
         <style>
+            /* Navigation Buttons - WP Rocket Style */
+            .cribops-nav-wrapper {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin: 20px 0 30px;
+                padding: 0;
+            }
+            .cribops-nav-btn {
+                background: #2c3338;
+                color: #fff;
+                border: none;
+                padding: 10px 20px;
+                font-size: 14px;
+                font-weight: 500;
+                cursor: pointer;
+                border-radius: 4px;
+                transition: all 0.2s ease;
+                outline: none;
+            }
+            .cribops-nav-btn:hover {
+                background: #1d2327;
+                transform: translateY(-1px);
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            .cribops-nav-btn.cribops-nav-active {
+                background: #0073aa;
+                box-shadow: 0 2px 6px rgba(0,115,170,0.3);
+            }
+            .cribops-nav-btn.cribops-nav-active:hover {
+                background: #005a87;
+            }
+
+            /* Tab Content */
             .mainwp-cribops-site-management .tab-content {
                 display: none;
                 padding: 20px 0;
@@ -185,6 +219,8 @@ class MainWP_CribOps_UI {
             .mainwp-cribops-site-management .tab-content.active {
                 display: block;
             }
+
+            /* Toolbar */
             .cribops-toolbar {
                 margin-bottom: 15px;
                 display: flex;
@@ -198,6 +234,8 @@ class MainWP_CribOps_UI {
             .cribops-toolbar select {
                 margin-right: 10px;
             }
+
+            /* Theme Browser */
             .theme-browser {
                 display: flex;
                 flex-wrap: wrap;
@@ -207,6 +245,8 @@ class MainWP_CribOps_UI {
                 border: 1px solid #ddd;
                 padding: 10px;
                 width: 300px;
+                border-radius: 4px;
+                background: #fff;
             }
             .theme-item.active {
                 border-color: #0073aa;
@@ -214,12 +254,17 @@ class MainWP_CribOps_UI {
             .theme-screenshot {
                 width: 100%;
                 height: auto;
+                border-radius: 3px;
             }
+
+            /* Activity Logs */
             #activity-logs-list {
                 max-height: 500px;
                 overflow-y: auto;
                 border: 1px solid #ddd;
                 padding: 10px;
+                border-radius: 4px;
+                background: #fff;
             }
             .log-entry {
                 padding: 5px 0;
@@ -227,6 +272,16 @@ class MainWP_CribOps_UI {
             }
             .log-entry:last-child {
                 border-bottom: none;
+            }
+
+            /* Responsive */
+            @media screen and (max-width: 782px) {
+                .cribops-nav-wrapper {
+                    flex-direction: column;
+                }
+                .cribops-nav-btn {
+                    width: 100%;
+                }
             }
         </style>
 
@@ -240,12 +295,12 @@ class MainWP_CribOps_UI {
             var packagesData = [];
 
             // Tab switching
-            $('.nav-tab').on('click', function(e) {
+            $('.cribops-nav-btn').on('click', function(e) {
                 e.preventDefault();
                 var tab = $(this).data('tab');
 
-                $('.nav-tab').removeClass('nav-tab-active');
-                $(this).addClass('nav-tab-active');
+                $('.cribops-nav-btn').removeClass('cribops-nav-active');
+                $(this).addClass('cribops-nav-active');
 
                 $('.tab-content').removeClass('active');
                 $('#' + tab).addClass('active');
