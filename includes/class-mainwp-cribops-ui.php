@@ -23,14 +23,14 @@ class MainWP_CribOps_UI {
         <div class="wrap mainwp-cribops-site-management">
             <h2>Manage CribOps WP Kit - <?php echo esc_html($site->name); ?></h2>
 
-            <div class="cribops-nav-wrapper">
-                <button class="cribops-nav-btn cribops-nav-active" data-tab="plugins">Installed Plugins</button>
-                <button class="cribops-nav-btn" data-tab="themes">Installed Themes</button>
-                <button class="cribops-nav-btn" data-tab="available-plugins">Available Plugins</button>
-                <button class="cribops-nav-btn" data-tab="available-themes">Available Themes</button>
-                <button class="cribops-nav-btn" data-tab="packages">Packages</button>
-                <button class="cribops-nav-btn" data-tab="settings">Settings</button>
-                <button class="cribops-nav-btn" data-tab="logs">Activity Logs</button>
+            <div class="ui labeled icon inverted menu mainwp-sub-submenu" id="cribops-menu">
+                <a href="#plugins" class="item active" data-tab="plugins">Installed Plugins</a>
+                <a href="#themes" class="item" data-tab="themes">Installed Themes</a>
+                <a href="#available-plugins" class="item" data-tab="available-plugins">Available Plugins</a>
+                <a href="#available-themes" class="item" data-tab="available-themes">Available Themes</a>
+                <a href="#packages" class="item" data-tab="packages">Packages</a>
+                <a href="#settings" class="item" data-tab="settings">Settings</a>
+                <a href="#logs" class="item" data-tab="logs">Activity Logs</a>
             </div>
 
             <div id="plugins" class="tab-content active">
@@ -178,56 +178,6 @@ class MainWP_CribOps_UI {
         </div>
 
         <style>
-            /* Navigation Buttons - MainWP Style */
-            .cribops-nav-wrapper {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 8px;
-                margin: 20px 0 30px;
-                padding: 4px;
-                background: #f0f0f1;
-                border-radius: 6px;
-            }
-            .cribops-nav-btn {
-                background: transparent;
-                color: #2c3338;
-                border: 1px solid transparent;
-                padding: 10px 18px;
-                font-size: 13px;
-                font-weight: 500;
-                cursor: pointer;
-                border-radius: 4px;
-                transition: all 0.15s ease;
-                outline: none;
-                position: relative;
-            }
-            .cribops-nav-btn:hover {
-                background: #fff;
-                border-color: #7fb100;
-                color: #2c3338;
-                box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-            }
-            .cribops-nav-btn.cribops-nav-active {
-                background: #fff;
-                color: #2c3338;
-                border-color: #7fb100;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.08);
-            }
-            .cribops-nav-btn.cribops-nav-active::before {
-                content: '';
-                position: absolute;
-                bottom: -4px;
-                left: 50%;
-                transform: translateX(-50%);
-                width: 80%;
-                height: 3px;
-                background: #7fb100;
-                border-radius: 2px 2px 0 0;
-            }
-            .cribops-nav-btn.cribops-nav-active:hover {
-                border-color: #6a9600;
-            }
-
             /* Tab Content */
             .mainwp-cribops-site-management .tab-content {
                 display: none;
@@ -312,12 +262,12 @@ class MainWP_CribOps_UI {
             var packagesData = [];
 
             // Tab switching
-            $('.cribops-nav-btn').on('click', function(e) {
+            $('#cribops-menu .item').on('click', function(e) {
                 e.preventDefault();
                 var tab = $(this).data('tab');
 
-                $('.cribops-nav-btn').removeClass('cribops-nav-active');
-                $(this).addClass('cribops-nav-active');
+                $('#cribops-menu .item').removeClass('active');
+                $(this).addClass('active');
 
                 $('.tab-content').removeClass('active');
                 $('#' + tab).addClass('active');
